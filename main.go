@@ -36,7 +36,7 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(HTTPResponse{
 		Email:            "ojutalayoayomide21@gmail.com",
 		Current_datetime: iso8601,
-		Github_url:       "https://github.com/ojutalayomi/hng/tree/main/",
+		Github_url:       "https://github.com/ojutalayomi/hng",
 	})
 }
 
