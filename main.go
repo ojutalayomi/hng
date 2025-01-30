@@ -9,6 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/rs/cors"
 )
 
 type HTTPResponse struct {
@@ -27,7 +29,6 @@ func Get(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now()
 
-	// Format as ISO 8601
 	iso8601 := now.Format(time.RFC3339)
 
 	log.Println(iso8601)
@@ -43,8 +44,16 @@ func main() {
 
 	// Your existing server code
 	mux := http.NewServeMux()
-	mux.Handle("/api", http.HandlerFunc(Get))
-	mux.Handle("/", http.HandlerFunc(Get))
+
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+	}).Handler
+
+	mux.Handle("/api", corsHandler(http.HandlerFunc(Get)))
+	mux.Handle("/", corsHandler(http.HandlerFunc(Get)))
 
 	server := &http.Server{
 		Addr:         ":8080",
