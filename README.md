@@ -34,7 +34,7 @@ The server will start on `http://localhost:8000`
 {
   "email": "ojutalayoayomide21@gmail.com",
   "current_datetime": "2025-01-30T21:21:31+01:00",
-  "github_url": "https://github.com/ojutalayomi/hng/tree/main/"
+  "github_url": "https://github.com/ojutalayomi/hng"
 }
 ```
 
