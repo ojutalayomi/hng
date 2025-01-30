@@ -43,6 +43,7 @@ func main() {
 
 	// Your existing server code
 	mux := http.NewServeMux()
+	mux.Handle("/api", http.HandlerFunc(Get))
 	mux.Handle("/", http.HandlerFunc(Get))
 
 	server := &http.Server{
