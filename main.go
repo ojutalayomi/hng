@@ -22,12 +22,12 @@ type HTTPResponseForIntro struct {
 }
 
 type HTTPResponseForClassifyNumber struct {
-	Number      string   `json:"number"`
-	Is_Prime    bool     `json:"is_prime"`
-	Is_Perfect  bool     `json:"is_perfect"`
-	Properties  []string `json:"properties"`
-	Digital_Sum int      `json:"digital_sum"`
-	Fun_Fact    string   `json:"fun_fact"`
+	Number     string   `json:"number"`
+	Is_Prime   bool     `json:"is_prime"`
+	Is_Perfect bool     `json:"is_perfect"`
+	Properties []string `json:"properties"`
+	Digit_Sum  int      `json:"digit_sum"`
+	Fun_Fact   string   `json:"fun_fact"`
 }
 
 type HTTPErrorResp struct {
@@ -36,11 +36,11 @@ type HTTPErrorResp struct {
 }
 
 var (
-	is_prime    bool
-	is_perfect  bool
-	properties  []string
-	digital_sum int
-	fun_fact    string
+	is_prime   bool
+	is_perfect bool
+	properties []string
+	digit_sum  int
+	fun_fact   string
 )
 
 func Intro(w http.ResponseWriter, r *http.Request) {
@@ -105,17 +105,17 @@ func ClassifyNumber(w http.ResponseWriter, r *http.Request) {
 		properties = append(properties, "odd")
 	}
 
-	digital_sum = utils.DigitalSum(number)
+	digit_sum = utils.DigitalSum(number)
 
 	fun_fact, _ = utils.FetchAPI("http://numbersapi.com/" + initialNumber + "/year?default=Boring+number+is+boring")
 
 	json.NewEncoder(w).Encode(HTTPResponseForClassifyNumber{
-		Number:      initialNumber,
-		Is_Prime:    is_prime,
-		Is_Perfect:  is_perfect,
-		Properties:  properties,
-		Digital_Sum: digital_sum,
-		Fun_Fact:    fun_fact,
+		Number:     initialNumber,
+		Is_Prime:   is_prime,
+		Is_Perfect: is_perfect,
+		Properties: properties,
+		Digit_Sum:  digit_sum,
+		Fun_Fact:   fun_fact,
 	})
 
 }
