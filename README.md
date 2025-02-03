@@ -43,5 +43,32 @@ The server will start on `http://localhost:8000`
 curl http://localhost:8000/
 ```
 
+### Task Description
+An API that takes a number and returns interesting mathematical properties about it, along with a fun fact.
+
+### Endpoint
+- URL: `/api/classify-number?number={number}`
+- Method: `GET`
+
+### Response Format
+```json
+{
+  "number": "371",
+  "is_prime": false,
+  "is_perfect": false,
+  "properties": [
+    "armstrong",
+    "odd"
+  ],
+  "digital_sum": 11,
+  "fun_fact": "371 is the year that Baekje forces storm the Goguryeo capital in P'yongyang (Korea)."
+}
+```
+
+### Example Usage
+```bash
+curl http://localhost:8000/api/classify-number?number=371
+```
+
 ## Related Resources
 - [Hire Golang Developers](https://hng.tech/hire/golang-developers)

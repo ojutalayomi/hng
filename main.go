@@ -3,23 +3,47 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"hng/step0/utils"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/rs/cors"
 )
 
-type HTTPResponse struct {
+type HTTPResponseForIntro struct {
 	Email            string `json:"email"`
 	Current_datetime string `json:"current_datetime"`
 	Github_url       string `json:"github_url"`
 }
 
-func Get(w http.ResponseWriter, r *http.Request) {
+type HTTPResponseForClassifyNumber struct {
+	Number      string   `json:"number"`
+	Is_Prime    bool     `json:"is_prime"`
+	Is_Perfect  bool     `json:"is_perfect"`
+	Properties  []string `json:"properties"`
+	Digital_Sum int      `json:"digital_sum"`
+	Fun_Fact    string   `json:"fun_fact"`
+}
+
+type HTTPErrorResp struct {
+	Number string `json:"number"`
+	Error  bool   `json:"error"`
+}
+
+var (
+	is_prime    bool
+	is_perfect  bool
+	properties  []string
+	digital_sum int
+	fun_fact    string
+)
+
+func Intro(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != "GET" {
@@ -33,11 +57,67 @@ func Get(w http.ResponseWriter, r *http.Request) {
 
 	log.Println(iso8601)
 
-	json.NewEncoder(w).Encode(HTTPResponse{
+	json.NewEncoder(w).Encode(HTTPResponseForIntro{
 		Email:            "ojutalayoayomide21@gmail.com",
 		Current_datetime: iso8601,
 		Github_url:       "https://github.com/ojutalayomi/hng",
 	})
+}
+
+func ClassifyNumber(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != "GET" {
+		http.Error(w, "missing option parameter", http.StatusBadRequest)
+		return
+	}
+
+	initialNumber := r.URL.Query().Get("number")
+	number, err := strconv.Atoi(initialNumber)
+	if err != nil {
+		errorResp := HTTPErrorResp{
+			Number: initialNumber,
+			Error:  true,
+		}
+
+		errorRespJSON, _ := json.Marshal(errorResp)
+		http.Error(w, string(errorRespJSON), http.StatusBadRequest)
+		return
+	}
+
+	// Check if number is prime
+	is_prime = utils.IsPrime(number)
+
+	// Check if number is perfect
+	is_perfect = utils.IsPerfect(number)
+
+	//Properties of the number
+	properties = []string{}
+
+	if utils.IsArmstrong(number) {
+		properties = append(properties, "armstrong")
+	}
+
+	// Check if number is even or odd
+	if utils.IsEven(number) {
+		properties = append(properties, "even")
+	} else {
+		properties = append(properties, "odd")
+	}
+
+	digital_sum = utils.DigitalSum(number)
+
+	fun_fact, _ = utils.FetchAPI("http://numbersapi.com/" + initialNumber + "/year?default=Boring+number+is+boring")
+
+	json.NewEncoder(w).Encode(HTTPResponseForClassifyNumber{
+		Number:      initialNumber,
+		Is_Prime:    is_prime,
+		Is_Perfect:  is_perfect,
+		Properties:  properties,
+		Digital_Sum: digital_sum,
+		Fun_Fact:    fun_fact,
+	})
+
 }
 
 func main() {
@@ -52,8 +132,8 @@ func main() {
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 	}).Handler
 
-	mux.Handle("/api", corsHandler(http.HandlerFunc(Get)))
-	mux.Handle("/", corsHandler(http.HandlerFunc(Get)))
+	mux.Handle("/api/classify-number", corsHandler(http.HandlerFunc(ClassifyNumber)))
+	mux.Handle("/", corsHandler(http.HandlerFunc(Intro)))
 
 	server := &http.Server{
 		Addr:         ":8080",
