@@ -71,14 +71,18 @@ func IsEven(n int) bool {
 
 func DigitalSum(n int) int {
 	sum := 0
-	n = Abs(n) // Handle negative numbers
+	n1 := Abs(n) // Handle negative numbers
 
-	for n > 0 {
-		sum += n % 10 // Extract last digit and add to sum
-		n /= 10       // Remove last digit
+	for n1 > 0 {
+		sum += n1 % 10 // Extract last digit and add to sum
+		n1 /= 10       // Remove last digit
 	}
 
-	return sum
+	if n > 0 {
+		return sum
+	} else {
+		return -sum
+	}
 }
 
 func Abs(n int) int {

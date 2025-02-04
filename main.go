@@ -22,7 +22,7 @@ type HTTPResponseForIntro struct {
 }
 
 type HTTPResponseForClassifyNumber struct {
-	Number     string   `json:"number"`
+	Number     int      `json:"number"`
 	Is_Prime   bool     `json:"is_prime"`
 	Is_Perfect bool     `json:"is_perfect"`
 	Properties []string `json:"properties"`
@@ -76,7 +76,7 @@ func ClassifyNumber(w http.ResponseWriter, r *http.Request) {
 	number, err := strconv.Atoi(initialNumber)
 	if err != nil {
 		errorResp := HTTPErrorResp{
-			Number: initialNumber,
+			Number: "alphabet",
 			Error:  true,
 		}
 
@@ -110,7 +110,7 @@ func ClassifyNumber(w http.ResponseWriter, r *http.Request) {
 	fun_fact, _ = utils.FetchAPI("http://numbersapi.com/" + initialNumber + "/year?default=Boring+number+is+boring")
 
 	json.NewEncoder(w).Encode(HTTPResponseForClassifyNumber{
-		Number:     initialNumber,
+		Number:     number,
 		Is_Prime:   is_prime,
 		Is_Perfect: is_perfect,
 		Properties: properties,
@@ -132,7 +132,7 @@ func main() {
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 	}).Handler
 
-	mux.Handle("/api/classify-number", corsHandler(http.HandlerFunc(ClassifyNumber)))
+	mux.Handle("/api/classify-number/", corsHandler(http.HandlerFunc(ClassifyNumber)))
 	mux.Handle("/", corsHandler(http.HandlerFunc(Intro)))
 
 	server := &http.Server{
