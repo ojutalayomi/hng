@@ -1,53 +1,70 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"hng/step0/utils"
+	"io"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"strconv"
-	"syscall"
 	"time"
 
-	"github.com/rs/cors"
+	"fmt"
+
+	"github.com/gin-gonic/gin"
 )
-
-type HTTPResponseForIntro struct {
-	Email            string `json:"email"`
-	Current_datetime string `json:"current_datetime"`
-	Github_url       string `json:"github_url"`
-}
-
-type HTTPResponseForClassifyNumber struct {
-	Number     int      `json:"number"`
-	Is_Prime   bool     `json:"is_prime"`
-	Is_Perfect bool     `json:"is_perfect"`
-	Properties []string `json:"properties"`
-	Digit_Sum  int      `json:"digit_sum"`
-	Fun_Fact   string   `json:"fun_fact"`
-}
-
-type HTTPErrorResp struct {
-	Number string `json:"number"`
-	Error  bool   `json:"error"`
-}
 
 var (
-	is_prime   bool
-	is_perfect bool
-	properties []string
-	digit_sum  int
-	fun_fact   string
+	ginMode    = os.Getenv("GIN_MODE")
+	port       = os.Getenv("PORT")
+	factApiUrl = os.Getenv("FACT_API_URL")
+	userEmail  = os.Getenv("USER_EMAIL")
+	userName   = os.Getenv("USER_NAME")
+	userStack  = os.Getenv("USER_STACK")
 )
 
-func Intro(w http.ResponseWriter, r *http.Request) {
+type User struct {
+	Email string `json:"email"`
+	Name  string `json:"name"`
+	Stack string `json:"stack"`
+}
 
-	w.Header().Set("Content-Type", "application/json")
-	if r.Method != "GET" {
-		http.Error(w, "missing option parameter", http.StatusBadRequest)
+type FactResponse struct {
+	Fact string `json:"fact"`
+}
+
+type HTTPResponse struct {
+	Status    string `json:"status"`
+	User      User   `json:"user"`
+	Timestamp string `json:"timestamp"`
+	Fact      string `json:"fact"`
+}
+
+func FetchAPI(url string) ([]byte, error) {
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close() // Ensure response body is closed
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
+
+func Get(c *gin.Context) {
+
+	c.Header("Content-Type", "application/json")
+	if c.Request.Method != "GET" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "missing option parameter",
+		})
 		return
 	}
 
@@ -55,113 +72,108 @@ func Intro(w http.ResponseWriter, r *http.Request) {
 
 	iso8601 := now.Format(time.RFC3339)
 
-	log.Println(iso8601)
+	fact, err := FetchAPI(factApiUrl)
+	if err != nil {
+		log.Println(err)
+	}
 
-	json.NewEncoder(w).Encode(HTTPResponseForIntro{
-		Email:            "ojutalayoayomide21@gmail.com",
-		Current_datetime: iso8601,
-		Github_url:       "https://github.com/ojutalayomi/hng",
+	var factResponse FactResponse
+	err = json.Unmarshal(fact, &factResponse)
+	if err != nil {
+		log.Println(err)
+	}
+
+	if factResponse.Fact == "" {
+		factResponse.Fact = "Unable to fetch fact"
+	}
+
+	c.JSON(http.StatusOK, HTTPResponse{
+		Status: "success",
+		User: User{
+			Email: userEmail,
+			Name:  userName,
+			Stack: userStack,
+		},
+		Timestamp: iso8601,
+		Fact:      factResponse.Fact,
 	})
 }
 
-func ClassifyNumber(w http.ResponseWriter, r *http.Request) {
+// setupRoutes configures all the API routes
+func setupRoutes() *gin.Engine {
+	// Create Gin router with default middleware (logger and recovery)
+	router := gin.Default()
+	fmt.Printf("\nGIN_MODE is %s\n", ginMode)
+	gin.SetMode(ginMode)
 
-	w.Header().Set("Content-Type", "application/json")
-	if r.Method != "GET" {
-		http.Error(w, "missing option parameter", http.StatusBadRequest)
-		return
-	}
+	// Add CORS middleware to allow cross-origin requests
+	router.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-	initialNumber := r.URL.Query().Get("number")
-	number, err := strconv.Atoi(initialNumber)
-	if err != nil {
-		errorResp := HTTPErrorResp{
-			Number: "alphabet",
-			Error:  true,
+		// Handle preflight requests
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
 		}
 
-		errorRespJSON, _ := json.Marshal(errorResp)
-		http.Error(w, string(errorRespJSON), http.StatusBadRequest)
-		return
-	}
-
-	// Check if number is prime
-	is_prime = utils.IsPrime(number)
-
-	// Check if number is perfect
-	is_perfect = utils.IsPerfect(number)
-
-	//Properties of the number
-	properties = []string{}
-
-	if utils.IsArmstrong(number) {
-		properties = append(properties, "armstrong")
-	}
-
-	// Check if number is even or odd
-	if utils.IsEven(number) {
-		properties = append(properties, "even")
-	} else {
-		properties = append(properties, "odd")
-	}
-
-	digit_sum = utils.DigitalSum(number)
-
-	fun_fact, _ = utils.FetchAPI("http://numbersapi.com/" + initialNumber + "/year?default=Boring+number+is+boring")
-
-	json.NewEncoder(w).Encode(HTTPResponseForClassifyNumber{
-		Number:     number,
-		Is_Prime:   is_prime,
-		Is_Perfect: is_perfect,
-		Properties: properties,
-		Digit_Sum:  digit_sum,
-		Fun_Fact:   fun_fact,
+		c.Next()
 	})
 
+	// Health check endpoint
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"service":   "HNG Step 0 API",
+			"timestamp": time.Now().UTC(),
+		})
+	})
+
+	// Main endpoint for fetching link previews
+	router.GET("/me", Get)
+
+	// API documentation endpoint
+	router.GET("/", func(c *gin.Context) {
+		docs := map[string]any{
+			"service":     "HNG Step 0 API",
+			"version":     "1.0.0",
+			"description": "API for fetching website metadata and me",
+			"endpoints": map[string]any{
+				"GET /me": map[string]any{
+					"description": "Fetch me endpoint",
+					"response": map[string]string{
+						"email":     "Email",
+						"name":      "Name",
+						"status":    "Status",
+						"fact":      "Fact",
+						"timestamp": "Timestamp",
+					},
+				},
+			},
+		}
+
+		c.JSON(http.StatusOK, docs)
+	})
+
+	return router
 }
 
 func main() {
 
-	// Your existing server code
-	mux := http.NewServeMux()
+	// Setup routes
+	router := setupRoutes()
 
-	corsHandler := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowCredentials: true,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "Authorization"},
-	}).Handler
+	// Get port from environment or use default
+	port := fmt.Sprintf(":%s", port)
 
-	mux.Handle("/api/classify-number/", corsHandler(http.HandlerFunc(ClassifyNumber)))
-	mux.Handle("/", corsHandler(http.HandlerFunc(Intro)))
+	fmt.Printf("🚀 HNG Step 0 API server starting on port %s\n", port)
+	fmt.Println("📝 API Documentation available at: /")
+	fmt.Println("🏥 Health check available at: /health")
+	fmt.Println("🔗 Me endpoint: GET /me")
 
-	server := &http.Server{
-		Addr:         ":8080",
-		Handler:      mux,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-
-	// Graceful shutdown
-	go func() {
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-		<-sigChan
-
-		log.Println("Shutting down server...")
-
-		// Create shutdown context
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if err := server.Shutdown(ctx); err != nil {
-			log.Printf("Server shutdown error: %v\n", err)
-		}
-	}()
-
-	log.Println("Serving at localhost:8080...")
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatal(err)
+	// Start server
+	if err := router.Run(port); err != nil {
+		fmt.Printf("❌ Failed to start server: %v\n", err)
 	}
 }
