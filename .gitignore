@@ -26,6 +26,9 @@ go.work.sum
 app
 main
 main1.go
-util/
+main2.go
+main.gom
+# util/
 README1.md
+README2.md
 .vscode/
