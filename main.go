@@ -50,7 +50,7 @@ func SetupRoutes() *gin.Engine {
 		})
 	})
 
-	// Main endpoint for fetching link previews
+	// Main endpoint for creating/analyzing strings
 	router.POST("/strings", func(c *gin.Context) {
 		var requestBody struct {
 			Value string `json:"value" binding:"required"`
@@ -77,7 +77,7 @@ func SetupRoutes() *gin.Engine {
 		response := handler.GetString()
 		bank = append(bank, response)
 
-		c.JSON(http.StatusOK, response)
+		c.JSON(http.StatusCreated, response)
 	})
 
 	router.GET("/strings/:string_value", func(c *gin.Context) {
