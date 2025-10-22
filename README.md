@@ -1,4 +1,4 @@
-# HNG Step 0 API
+# HNG Step 1 API
 
 This project provides a string analysis API with endpoints to analyze strings, filter data using natural language or structured queries, and more.
 
